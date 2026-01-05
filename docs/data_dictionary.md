@@ -117,6 +117,14 @@ Source: InsideAirbnb (Milan, Florence, Bologna, Naples)
 | `str_proxy` | float | estimated density | Tourism-calibrated STR proxy |
 | `has_str_data` | int (0/1) | | 1 if direct Airbnb data available |
 
+### Additional STR Features
+
+| Column | Type | Unit | Description |
+|--------|------|------|-------------|
+| `airbnb_density` | float | listings/1000 pop | Alternative STR density calculation |
+| `str_price` | float | EUR/night | STR nightly price |
+| `log_str_price` | float | log EUR | Log-transformed STR price |
+
 ---
 
 ## Log-Transformed Features

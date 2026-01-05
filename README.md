@@ -4,13 +4,17 @@ A machine learning system for analyzing Italian real estate prices, identifying 
 
 ## Key Results
 
-| Model | Target | R² Score | Key Features |
-|-------|--------|----------|--------------|
-| Price (with STR) | EUR/sqm | **83.2%** | STR density, income, location |
-| Rent (with STR) | EUR/sqm/month | **74.3%** | STR density, tourism, population |
-| Price (baseline) | EUR/sqm | 80.9% | Demographics only |
+| Model | Target | R² Score | Validation | Notes |
+|-------|--------|----------|------------|-------|
+| Price (GB + STR) | EUR/sqm | **84.4%** | Spatial CV | Holdout municipalities |
+| Price (GB + STR) | EUR/sqm | **92.2%** | Temporal | Train 2014-21, test 22-23 |
+| Price (GB + lag) | EUR/sqm | **99.4%** | Spatial CV | For forecasting |
+| Rent (GB + STR) | EUR/sqm/month | **74.3%** | Random split | |
 
-**Top Finding**: Short-term rental (STR) density is the #1 predictor of real estate prices, explaining 21-31% of variance in Italian municipalities with tourism activity.
+**Key Findings**:
+1. STR density is the #1 predictor (65% feature importance) for price levels
+2. Prices are highly persistent (99.4% R² with lagged price)
+3. Model captures 91% of spatial autocorrelation (Moran's I: 0.76 → 0.07)
 
 ## Features
 
@@ -86,9 +90,9 @@ italian-real-estate-risk/
 
 | Source | Description | Coverage |
 |--------|-------------|----------|
-| **OMI** | Real estate quotations (Agenzia delle Entrate) | 7,904 municipalities, 2015-2024 |
-| **ISTAT** | Demographics, population trends | All municipalities |
-| **IRPEF** | Income tax declarations (MEF) | Municipality-level averages |
+| **OMI** | Real estate quotations (Agenzia delle Entrate) | 7,670 municipalities, 2014-2023 |
+| **ISTAT** | Demographics, population trends | All municipalities, 2002-2025 |
+| **IRPEF** | Income tax declarations (MEF) | Municipality-level, 2012-2023 |
 | **InsideAirbnb** | Short-term rental listings | Milan, Florence, Bologna, Naples |
 | **Tourism** | Tourist arrivals by province | Province-level |
 
@@ -209,11 +213,11 @@ pytest tests/unit/ -v
 
 ## Key Findings
 
-1. **STR Density is #1 Predictor**: Short-term rental density explains 21-31% of price variance, more than any traditional demographic factor.
+1. **STR Density is #1 Predictor**: Short-term rental density accounts for ~65% of feature importance in the Gradient Boosting model, far exceeding traditional demographic factors.
 
-2. **Tourism Premium on Prices > Rents**: Tourism intensity coefficient is 3x higher for prices (β=0.089) than rents (β=0.029), suggesting capital appreciation expectations.
+2. **Spatial Structure Captured**: Model reduces spatial autocorrelation by 91% (Moran's I: 0.76 → 0.07), indicating location features effectively capture geographic patterns.
 
-3. **Airbnb Premium**: STR revenue is 470-1,117% higher than long-term rents in major cities.
+3. **Prices are Persistent**: Year-over-year price correlation is ~0.99. Adding lagged price increases R² from 84% to 99%, useful for forecasting.
 
 4. **Regional Disparities**: Northern Italy prices are 40-60% higher than South, controlling for income and demographics.
 

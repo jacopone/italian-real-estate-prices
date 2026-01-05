@@ -130,18 +130,20 @@ where X includes:
 | subsample | 0.8 | Stochastic gradient boosting |
 | max_features | sqrt | Feature randomization |
 
-**Results**:
+**Results** (Spatial Cross-Validation):
 - Without STR: R² = 80.9% (prices), 64.6% (rents)
-- With STR: R² = 83.2% (prices), 74.3% (rents)
+- With STR: R² = **84.4% ± 2.1%** (prices), 74.3% (rents)
+- Temporal split (train 2014-21, test 2022-23): R² = 92.2%
 
 ### 4.3 Model Comparison
 
-| Model | Price R² | Rent R² | Interpretation |
-|-------|----------|---------|----------------|
-| OLS | 43.8% | 21.0% | Linear relationships only |
-| OLS + STR | 44.0% | 21.5% | STR adds little linearly |
-| GB | 80.9% | 64.6% | Captures nonlinearities |
-| GB + STR | **83.2%** | **74.3%** | STR is nonlinear predictor |
+| Model | Price R² | Validation | Interpretation |
+|-------|----------|------------|----------------|
+| OLS | 37.8% | Random split | Linear relationships only |
+| OLS + STR | 44.0% | Random split | STR adds ~6 points |
+| GB | 80.9% | Random split | Captures nonlinearities |
+| GB + STR | **84.4%** | Spatial CV | Proper holdout municipalities |
+| GB + STR + lag | **99.4%** | Spatial CV | For forecasting (prices persistent) |
 
 ## 5. Feature Importance Analysis
 
@@ -157,16 +159,18 @@ Importance(feature) = Σ (ΔImpurity at splits using feature) / n_trees
 
 | Rank | Feature | Importance |
 |------|---------|------------|
-| 1 | log_str_density | 21.3% |
-| 2 | lat | 15.2% |
-| 3 | log_income | 12.8% |
-| 4 | long | 11.4% |
-| 5 | dist_major_city | 9.7% |
-| 6 | tourism_intensity | 7.3% |
-| 7 | log_population | 6.1% |
-| 8 | pop_change_pct | 5.4% |
-| 9 | dist_coast | 4.2% |
-| 10 | income_change_pct | 3.1% |
+| 1 | str_density | 64.8% |
+| 2 | urban | 9.3% |
+| 3 | income_ratio | 8.5% |
+| 4 | tourism_intensity | 3.6% |
+| 5 | log_population | 2.6% |
+| 6 | dist_coast | 2.2% |
+| 7 | long | 1.9% |
+| 8 | lat | 1.9% |
+| 9 | dist_major_city | 1.8% |
+| 10 | str_premium | 1.7% |
+
+*Note: Feature importance varies with feature set and data subset. STR density dominates when STR features are included.*
 
 ### 5.2 STR vs Tourism Effect
 
@@ -226,19 +230,22 @@ Assuming 70 sqm typical apartment and 100% occupancy for long-term rental.
 
 ### 7.1 Cross-Validation
 
-5-fold cross-validation with stratification by region:
+**Spatial Cross-Validation** (GroupKFold by municipality):
 
-| Fold | Train R² | Val R² |
-|------|----------|--------|
-| 1 | 0.842 | 0.821 |
-| 2 | 0.839 | 0.834 |
-| 3 | 0.845 | 0.827 |
-| 4 | 0.841 | 0.831 |
-| 5 | 0.838 | 0.829 |
-| **Mean** | 0.841 | **0.828** |
-| **Std** | 0.003 | 0.005 |
+| Fold | Test R² |
+|------|---------|
+| 1 | 0.856 |
+| 2 | 0.835 |
+| 3 | 0.829 |
+| 4 | 0.844 |
+| 5 | 0.854 |
+| **Mean** | **0.844** |
+| **Std** | 0.011 |
 
-Low variance across folds indicates robust model.
+**Why Spatial CV matters**: Panel data (same municipalities across years) creates data leakage in random splits. Spatial CV holds out entire municipalities, testing true generalization to unseen locations.
+
+**Temporal Validation** (train 2014-2021, test 2022-2023):
+- R² = 92.2%, confirming the model predicts future prices well
 
 ### 7.2 Residual Diagnostics
 
@@ -249,12 +256,21 @@ Low variance across folds indicates robust model.
 | Residual kurtosis | 1.2 | ✓ (not extreme) |
 | Heteroscedasticity | Mild | ⚠ (some patterns) |
 
-### 7.3 Model Limitations
+### 7.3 Spatial Autocorrelation (Moran's I)
 
-1. **Spatial autocorrelation**: Not fully addressed (GWR could improve)
-2. **Temporal dynamics**: Model is cross-sectional, ignores price momentum
-3. **Micro-location**: Municipality-level misses neighborhood variation
-4. **STR data coverage**: Only 4 cities have direct Airbnb data; proxy used elsewhere
+| Metric | Raw Prices | Model Residuals | Reduction |
+|--------|------------|-----------------|-----------|
+| Moran's I (k=10) | 0.763 | 0.066 | **91%** |
+| Z-score | 154.7 | 23.5 | - |
+
+The model captures most spatial structure through location features (lat, long, distances). Remaining autocorrelation is statistically significant but small in magnitude.
+
+### 7.4 Model Limitations
+
+1. **Residual spatial autocorrelation**: Moran's I = 0.07 remains significant; spatial lag models could add 2-5% R²
+2. **Micro-location**: Municipality-level misses neighborhood variation within cities
+3. **STR data coverage**: Only 4 cities have direct Airbnb data; tourism intensity used as proxy elsewhere
+4. **Price persistence**: High correlation (r=0.99) year-over-year limits detection of rapid changes
 
 ## 8. Reproducibility
 
