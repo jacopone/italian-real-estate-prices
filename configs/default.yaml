@@ -1,0 +1,192 @@
+# Italian Real Estate Demographic Risk Model - Configuration
+# ============================================================
+#
+# This file contains all configurable parameters for the analysis pipeline.
+# Values here override the defaults defined in src/config.py
+#
+# Usage:
+#   from src.config import load_config
+#   config = load_config("configs/default.yaml")
+
+# Project metadata
+project_name: "Italian Real Estate Demographic Risk Model"
+analysis_year: 2023
+
+# =============================================================================
+# PATH CONFIGURATION
+# =============================================================================
+paths:
+  data_dir: "data"
+  raw_dir: "data/raw"
+  processed_dir: "data/processed"
+  outputs_dir: "outputs"
+  models_dir: "models"
+
+# =============================================================================
+# OMI DATA CONFIGURATION
+# Osservatorio Mercato Immobiliare - Real estate quotations
+# =============================================================================
+omi:
+  # Property types to include (Italian names from OMI dataset)
+  # Full list: Abitazioni civili, Abitazioni di tipo economico, Ville e Villini,
+  #            Box, Negozi, Uffici, etc.
+  property_types:
+    - "Abitazioni civili"
+    - "Abitazioni di tipo economico"
+    - "Ville e Villini"
+
+  # OMI zone types in priority order for municipality aggregation
+  # B = Central (Centro), C = Semi-central, D = Peripheral,
+  # E = Suburban, R = Rural
+  zone_priority:
+    - "B"
+    - "C"
+    - "D"
+    - "E"
+    - "R"
+
+  # Year range for analysis
+  min_year: 2015
+  max_year: 2024
+
+  # Price filters (EUR/sqm) - removes outliers
+  min_price_sqm: 200.0
+  max_price_sqm: 20000.0
+
+# =============================================================================
+# FEATURE ENGINEERING CONFIGURATION
+# =============================================================================
+features:
+  # Columns to log-transform (uses log1p for zero-safe transformation)
+  # Log transformation helps with:
+  # - Reducing skewness in price/income distributions
+  # - Making multiplicative relationships additive (elasticities)
+  log_transform_columns:
+    - "price_mid"
+    - "rent_mid"
+    - "income_avg"
+    - "population"
+    - "str_density"
+
+  # Demographic features to compute
+  demographic_features:
+    - "population_change_pct"  # Population change 2011-2023
+    - "aging_index"            # Over 65 / Under 15 ratio
+    - "dependency_ratio"       # (0-14 + 65+) / (15-64) ratio
+
+  # Economic features
+  economic_features:
+    - "income_avg"             # Average declared income
+    - "income_per_capita"      # Income per resident
+    - "income_gini"            # Income inequality (if available)
+
+  # Geographic features
+  geographic_features:
+    - "lat"                    # Latitude
+    - "lon"                    # Longitude
+    - "distance_to_milan"      # Km to Milan (economic center)
+    - "altitude"               # Meters above sea level
+
+  # Tourism features
+  tourism_features:
+    - "tourism_intensity"      # Tourist arrivals per 1000 residents
+    - "str_density"            # Short-term rental density
+    - "airbnb_premium"         # STR price vs long-term rent ratio
+
+  # Whether to compute STR proxy for provinces without Airbnb data
+  # Uses calibration: str_proxy = tourism_intensity * (avg_airbnb_density / avg_tourism)
+  include_str_proxy: true
+
+# =============================================================================
+# MODEL CONFIGURATION
+# =============================================================================
+model:
+  # Target variables (log-transformed)
+  price_target: "log_price_mid"
+  rent_target: "log_rent_mid"
+
+  # Train/test split
+  test_size: 0.2
+  random_state: 42
+
+  # Cross-validation
+  cv_folds: 5
+
+  # Gradient Boosting hyperparameters
+  # These were tuned via grid search for optimal R²
+  gb_params:
+    n_estimators: 500
+    learning_rate: 0.05
+    max_depth: 6
+    min_samples_split: 20
+    min_samples_leaf: 10
+    subsample: 0.8
+    max_features: "sqrt"
+    random_state: 42
+
+  # OLS regularization (Ridge alpha)
+  ols_alpha: 0.01
+
+# =============================================================================
+# EVALUATION CONFIGURATION
+# =============================================================================
+evaluation:
+  # Minimum acceptable R² for model quality gates
+  min_r2_price: 0.80
+  min_r2_rent: 0.70
+
+  # Undervaluation detection threshold
+  # Negative residual = property cheaper than predicted
+  # -0.15 means property is at least 15% below fair value
+  undervaluation_threshold: -0.15
+
+  # Smart picks criteria
+  # Properties must satisfy BOTH conditions:
+  # 1. Price gap <= max_price_gap_pct (undervalued)
+  # 2. Gross yield >= min_yield_pct
+  min_yield_pct: 4.0
+  max_price_gap_pct: -15.0
+
+# =============================================================================
+# VISUALIZATION CONFIGURATION
+# =============================================================================
+visualization:
+  # Coordinate reference system (WGS84 for lat/lon)
+  map_crs: "EPSG:4326"
+
+  # Figure sizes (width, height in inches)
+  figsize_map:
+    - 12
+    - 10
+  figsize_chart:
+    - 10
+    - 6
+
+  # Color schemes
+  # RdYlGn_r: Red (low) -> Yellow -> Green (high), reversed
+  # RdBu_r: Red (negative) -> White -> Blue (positive), reversed
+  colormap_sequential: "RdYlGn_r"
+  colormap_diverging: "RdBu_r"
+
+  # Export resolution (dots per inch)
+  dpi: 150
+
+# =============================================================================
+# AIRBNB / SHORT-TERM RENTAL CONFIGURATION
+# =============================================================================
+airbnb:
+  # Cities with InsideAirbnb data available
+  # Data source: http://insideairbnb.com/get-the-data/
+  available_cities:
+    - "milan"
+    - "florence"
+    - "bologna"
+    - "naples"
+
+  # Minimum reviews for listing to be included
+  # 0 = include all listings
+  min_reviews: 0
+
+  # Assumed occupancy for Airbnb premium calculation
+  # 20 days/month is typical for well-managed listings
+  days_per_month: 20

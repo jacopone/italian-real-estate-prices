@@ -1,0 +1,47 @@
+# Data source configuration for Italian Real Estate Risk Model
+
+omi:
+  description: "Real estate quotations from Agenzia delle Entrate"
+  github_repo: "https://github.com/ondata/quotazioni-immobiliari-agenzia-entrate"
+  raw_base_url: "https://raw.githubusercontent.com/ondata/quotazioni-immobiliari-agenzia-entrate/main"
+  license: "CC-BY (cite: Agenzia Entrate - OMI)"
+  update_frequency: "semiannual"
+  files:
+    valori: "data/valori.csv"
+    zone: "data/zone.csv"
+    comuni: "data/comuni.csv"
+    tipologie: "data/tipologie.csv"
+
+geographic:
+  description: "Italian administrative boundaries"
+  github_repo: "https://github.com/openpolis/geojson-italy"
+  raw_base_url: "https://raw.githubusercontent.com/openpolis/geojson-italy/master"
+  license: "CC-BY"
+  files:
+    regioni: "geojson/limits_IT_regions.geojson"
+    province: "geojson/limits_IT_provinces.geojson"
+    comuni: "geojson/limits_IT_municipalities.geojson"
+
+istat:
+  description: "ISTAT demographic statistics"
+  portals:
+    i_stat: "http://dati.istat.it/?lang=en"
+    demo: "https://demo.istat.it/?l=en"
+    census: "http://dati-censimentopopolazione.istat.it/Index.aspx?lang=en"
+  license: "CC-BY 3.0"
+  datasets:
+    - name: "DCIS_POPRES"
+      description: "Resident population by municipality"
+      url: "http://dati.istat.it/Index.aspx?DataSetCode=DCIS_POPRES"
+    - name: "DCIS_INDDEMOG1"
+      description: "Demographic indicators"
+      url: "http://dati.istat.it/Index.aspx?DataSetCode=DCIS_INDDEMOG1"
+    - name: "DCIS_BILPOP"
+      description: "Population balance (births, deaths, migration)"
+      url: "http://dati.istat.it/Index.aspx?DataSetCode=DCIS_BILPOP"
+
+mef:
+  description: "Ministry of Finance - Income data"
+  url: "https://www.finanze.gov.it/it/statistiche-fiscali/DichiarazioniFiscali-/"
+  dataset: "Redditi e principali variabili IRPEF su base comunale"
+  license: "CC 3.0"

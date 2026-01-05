@@ -1,0 +1,16 @@
+{
+  "mcpServers": {
+    "playwright": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@playwright/mcp@latest",
+        "--extension",
+        "--browser",
+        "chrome",
+        "--executable-path",
+        "/run/current-system/sw/bin/google-chrome-stable"
+      ]
+    }
+  }
+}
