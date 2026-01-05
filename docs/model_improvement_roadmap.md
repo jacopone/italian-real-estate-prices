@@ -1,230 +1,187 @@
-# Real Estate Price Prediction Model: Improvement Roadmap
+# Real Estate Price Prediction Model: Status & Roadmap
 
-## Current State: POC Model
+## Current State: Production Model
 
-**R² = 0.016 (1.6%)** - Demographics alone explain almost nothing
+| Model | Target | R² Score | Validation | Status |
+|-------|--------|----------|------------|--------|
+| **Price (XGBoost + STR)** | EUR/sqm | **84.4%** | Spatial CV | ✅ Production |
+| **Price (GB + STR + Lag)** | EUR/sqm | **99.4%** | Spatial CV | ✅ Forecasting |
+| **Rent (Gradient Boosting + STR)** | EUR/sqm/month | **74.3%** | Spatial CV | ✅ Production |
+| Price (Temporal Split) | EUR/sqm | 92.2% | 2014-21→22-23 | Validation |
 
-```
-price_change = 0.49% + 0.25×italian_pop_change + 0.03×foreign_pop_change
-```
-
----
-
-## Why Our Model Has Low Explanatory Power
-
-According to academic literature, real estate prices are determined by **multiple categories of factors**:
-
-| Category | Our Model | Required |
-|----------|-----------|----------|
-| Demographics | ✅ Basic | Need age structure, household formation |
-| Structural (property) | ❌ Missing | Size, quality, type, age of buildings |
-| Location/Spatial | ❌ Missing | Distance to CBD, amenities, accessibility |
-| Economic | ❌ Missing | Income, employment, GDP |
-| Financial | ❌ Missing | Interest rates, mortgage availability |
-| Environmental | ❌ Missing | Climate, pollution, natural amenities |
+**Key Findings**:
+1. STR density is the #1 predictor (64.7% feature importance) for price levels
+2. Lagged price dominates (98.7%) for forecasting - prices are highly persistent
+3. Spatial autocorrelation reduced by 91% (Moran's I: 0.76 → 0.07)
 
 ---
 
-## Literature Review: What Works
+## Model Evolution
 
-### Best Performing Models
-
-| Model Type | Typical R² | Notes |
-|------------|------------|-------|
-| Linear Regression | 0.60-0.75 | Baseline, easy to interpret |
-| Random Forest | 0.80-0.90 | Good for non-linear relationships |
-| XGBoost | 0.85-0.95 | Best overall performance |
-| GWR (Spatial) | 0.88-0.93 | Captures geographic heterogeneity |
-| GTWR (Spatial+Temporal) | 0.92-0.95 | Best for panel data |
-| Neural Networks | 0.85-0.95 | Complex but powerful |
-
-### Most Important Features (from ML studies)
-
-1. **OverallQual** - Property quality rating (strongest predictor)
-2. **GrLivArea** - Living area square footage
-3. **Location/Latitude** - Spatial position
-4. **TotalBsmtSF** - Basement size
-5. **GarageCars** - Garage capacity
-6. **YearBuilt** - Age of property
-7. **Neighborhood** - Categorical location
-
-### Italian-Specific Research
-
-From MDPI (2025) study on Italian provinces:
-- **Variables used**: house stock, incomes, population, employment, inflation, interest rates
-- **OMI data**: Average price of civil properties in "normal" conditions, Zone B
-- **Model**: MLP Neural Network on 99 provinces (2005-2020)
+| Version | Model | R² | Features | Notes |
+|---------|-------|-------|----------|-------|
+| v0.1 | OLS (pop_change → price_change) | 0.3% | 1 | Initial POC - useless |
+| v0.2 | OLS (log_income + log_pop → log_price) | 32.3% | 2 | Hedonic baseline |
+| v0.3 | OLS + Year FE | 35.5% | 11 | Time controls |
+| v0.4 | GWR (spatially varying coefficients) | ~45% | 2 | Spatial heterogeneity |
+| v0.5 | Gradient Boosting (full features) | 80.9% | 25+ | ML ensemble |
+| **v1.0** | **GB + STR features** | **83.2%** | 29 | **Current production** |
 
 ---
 
-## Recommended Variable Categories
+## Current Feature Set (29 features)
 
-### Tier 1: Essential (High Impact)
+### Demographics
+- `log_population` - Log-transformed population
+- `pop_change_pct` - Population change 2011-2023
+- `pop_declining` - Binary flag for declining municipalities
+- `pop_growing_fast` - Binary flag for fast-growing municipalities
 
-| Variable | Source | Expected Impact |
-|----------|--------|-----------------|
-| **Household income** | ISTAT | +++ (strongest economic driver) |
-| **Employment rate** | ISTAT | ++ |
-| **Interest rates** | Bank of Italy | ++ (affordability) |
-| **Population density** | ISTAT | ++ |
-| **Age structure** (% elderly) | ISTAT | ++ (demographic quality) |
+### Economics
+- `log_income` - Log-transformed average IRPEF income
+- `income_change_pct` - Income growth rate
+- `income_ratio` - Ratio to national average
 
-### Tier 2: Important (Medium Impact)
+### Geography
+- `lat`, `long` - Coordinates
+- `dist_major_city` - Distance to nearest major city (km)
+- `dist_coast` - Distance to coast (km)
+- `northern`, `coastal`, `urban`, `alpine_zone` - Location flags
 
-| Variable | Source | Expected Impact |
-|----------|--------|-----------------|
-| **Accessibility index** | ISTAT/Ministry | + (transport infrastructure) |
-| **Service availability** | ISTAT | + (schools, hospitals) |
-| **Tourism intensity** | ISTAT | + (demand driver) |
-| **Building stock age** | Censimento | + (quality proxy) |
-| **Rental yield** | OMI | + (investment attractiveness) |
-
-### Tier 3: Refinement (Lower but Significant)
-
-| Variable | Source | Expected Impact |
-|----------|--------|-----------------|
-| **Crime rate** | ISTAT/Ministry | - |
-| **Environmental quality** | ISPRA | + |
-| **University presence** | MIUR | + |
-| **Coastal/Mountain** | GIS | +/- |
-| **Climate index** | ISTAT | + |
+### Tourism & STR (Short-Term Rentals)
+- `tourism_intensity` - Arrivals per 1000 residents
+- `str_density` - Airbnb listings per 1000 residents
+- `log_str_density` - Log-transformed STR density
+- `str_price` - Median Airbnb nightly rate
+- `str_premium` - STR revenue vs long-term rent ratio
 
 ---
 
-## Spatial Modeling Requirements
+## Completed Work
 
-### Why Standard OLS Fails
+### ✅ Data Integration
+- OMI prices (7,904 municipalities, 2004-2024)
+- ISTAT demographics (population, age structure)
+- IRPEF income (2012-2023)
+- InsideAirbnb STR data (Milan, Florence, Bologna, Naples)
+- Tourism arrivals by province
 
-Real estate exhibits **spatial autocorrelation** - prices in nearby areas are correlated. This violates OLS assumptions and requires:
+### ✅ Feature Engineering
+- Hedonic pricing specification (log-log)
+- Geographic distance features (haversine)
+- STR density aggregation to municipality level
+- Population trajectory classification
 
-1. **Spatial Lag Model (SLM)**: Price depends on neighbors' prices
-   ```
-   Y = ρWY + Xβ + ε
-   ```
+### ✅ Spatial Analysis
+- GWR (Geographically Weighted Regression) implemented
+- Coefficients vary by region (income β: 0.18–0.39)
+- North/South heterogeneity captured
 
-2. **Spatial Error Model (SEM)**: Errors are spatially correlated
-   ```
-   Y = Xβ + λWu + ε
-   ```
+### ✅ Time Series Analysis
+- Panel cross-correlation (lag=0 optimal)
+- Distributed lag model (cumulative effect: 0.20)
+- Trajectory divergence analysis (decliners vs growers)
 
-3. **Geographically Weighted Regression (GWR)**: Coefficients vary by location
-   - Allows different relationships in different regions
-   - North vs South Italy may have different dynamics
+### ✅ ML Models
+- Gradient Boosting (n_estimators=500, max_depth=6)
+- XGBoost and LightGBM benchmarked
+- SHAP feature importance computed
+- Cross-validation (5-fold)
 
-### Recommended: GTWR (Geographically and Temporally Weighted Regression)
-
-From literature: **GTWR reduced errors by 46.4%** vs standard OLS and achieved **R² = 0.93** for housing prices.
-
----
-
-## Data Sources for Italy
-
-### Available from ISTAT
-
-| Dataset | Coverage | Variables |
-|---------|----------|-----------|
-| Censimento popolazione | Municipal | Demographics, housing stock |
-| Redditi IRPEF | Municipal | Declared income |
-| Occupazione | Provincial | Employment rates |
-| Imprese | Municipal | Business density |
-| Turismo | Municipal | Tourism arrivals |
-| Indicatori territoriali | Municipal | Quality of life composite |
-
-### Available from Other Sources
-
-| Source | Data |
-|--------|------|
-| **OMI (Agenzia Entrate)** | Property prices, rental values |
-| **Bank of Italy** | Interest rates, mortgage data |
-| **ISPRA** | Environmental indicators |
-| **Ministero Infrastrutture** | Accessibility, transport |
-| **OpenStreetMap** | POI density, amenities |
+### ✅ Validation & Diagnostics (2026-01-05)
+- **Temporal split validation**: Train 2014-2021 → Test 2022-2023 (R²=92.2%)
+- **Spatial CV (GroupKFold by municipality)**: R²=84.4% ± 2.1%
+- **Moran's I spatial autocorrelation**: Reduced from 0.76 to 0.07 (91% improvement)
+- **Lagged price feature**: R²=99.4% for forecasting (prices highly persistent)
 
 ---
 
-## Implementation Roadmap
+## Remaining Improvements
 
-### Phase 1: Data Enrichment (2-3 weeks)
+### Priority 1: Model Enhancements
 
-```
-Priority data to add:
-1. Household income by municipality (ISTAT IRPEF)
-2. Employment rate by province (ISTAT)
-3. National interest rates (Bank of Italy)
-4. Population density and urban/rural classification
-5. Age dependency ratio (from existing ISTAT data)
-```
+| Task | Expected Impact | Effort |
+|------|-----------------|--------|
+| XGBoost comparison | +1-3% R² | Low |
+| LightGBM comparison | +1-2% R² | Low |
+| Hyperparameter tuning (Optuna) | +1-2% R² | Medium |
+| Stacked ensemble | +2-4% R² | Medium |
 
-### Phase 2: Spatial Model (1-2 weeks)
+### Priority 2: Spatial Refinements
 
-```python
-# Upgrade from OLS to spatial models
-from pysal.model import spreg
+| Task | Expected Impact | Effort |
+|------|-----------------|--------|
+| Moran's I spatial autocorrelation | Diagnostic | Low |
+| Spatial lag model (SAR) | +2-5% R² | Medium |
+| GTWR (temporal + spatial) | +3-7% R² | High |
+| Neighbor-based features | +1-3% R² | Medium |
 
-# Spatial Lag Model
-model_slm = spreg.GM_Lag(y, X, w=weights_matrix)
+### Priority 3: Feature Expansion
 
-# Geographically Weighted Regression
-from mgwr.gwr import GWR
-model_gwr = GWR(coords, y, X, bw=bandwidth)
-```
+| Task | Expected Impact | Effort |
+|------|-----------------|--------|
+| Age dependency ratio | +1-2% R² | Low |
+| University presence | +0.5-1% R² | Low |
+| Crime rate (ISTAT) | +0.5-1% R² | Medium |
+| Environmental quality (ISPRA) | +0.5-1% R² | Medium |
+| Accessibility index | +1-2% R² | Medium |
+| Interest rate interaction | +0.5-1% R² | Low |
 
-### Phase 3: Machine Learning (1-2 weeks)
+### Priority 4: Temporal Dynamics
 
-```python
-# XGBoost for price prediction
-import xgboost as xgb
-
-model = xgb.XGBRegressor(
-    n_estimators=500,
-    max_depth=6,
-    learning_rate=0.05,
-    subsample=0.8
-)
-
-# Feature importance analysis
-importance = model.feature_importances_
-```
-
-### Phase 4: Temporal Dynamics (1 week)
-
-```python
-# Panel data models with fixed effects
-from linearmodels.panel import PanelOLS
-
-# GTWR for spatio-temporal variation
-# Requires specialized implementation
-```
-
----
-
-## Expected Improvement
-
-| Model Stage | Expected R² | Improvement |
-|-------------|-------------|-------------|
-| Current (demographics only) | 0.016 | Baseline |
-| + Economic variables | 0.15-0.25 | 10-15x |
-| + Spatial structure | 0.40-0.60 | 25-40x |
-| + ML ensemble | 0.70-0.85 | 45-55x |
-| + Temporal dynamics | 0.80-0.90 | 50-60x |
-
----
-
-## Key References
-
-1. Rosen (1974) - Hedonic Prices and Implicit Markets (foundational theory)
-2. Anselin (1988) - Spatial Econometrics: Methods and Models
-3. [MDPI 2024](https://www.mdpi.com/2813-2203/3/1/3) - XGBoost for house prices
-4. [MDPI 2025](https://www.mdpi.com/2813-8090/2/4/16) - MLP for Italian housing market
-5. [Tandfonline](https://www.tandfonline.com/doi/abs/10.1080/13658810802672469) - GTWR methodology
-6. [ScienceDirect Istanbul](https://www.sciencedirect.com/science/article/abs/pii/S0264837722002101) - GWR case study
+| Task | Expected Impact | Effort |
+|------|-----------------|--------|
+| Panel fixed effects (municipality FE) | Better causal ID | Medium |
+| Lagged dependent variable | +1-2% R² | Low |
+| Rolling window features | +1-2% R² | Medium |
 
 ---
 
 ## Quick Wins (Can Do Now)
 
-1. **Add income data** - Single biggest improvement potential
-2. **Add spatial weights** - Account for neighbor effects
-3. **Try Random Forest** - Quick ML baseline
-4. **Segment by region** - Separate North/South models
-5. **Add lagged variables** - Previous year's price change
+1. **XGBoost benchmark** - Drop-in replacement, often 1-3% better
+2. **Moran's I test** - Verify spatial autocorrelation in residuals
+3. **Age dependency ratio** - Already available in ISTAT data
+4. **Lagged price feature** - Previous year's price as predictor
+5. **Region fixed effects** - Simple dummy encoding
+
+---
+
+## Technical Debt
+
+- [ ] No saved model artifacts (`.pkl` files)
+- [ ] Missing integration tests for full pipeline
+- [ ] GWR code was ad-hoc, not in `src/models/`
+- [ ] SHAP analysis not reproducible from CLI
+
+---
+
+## Data Sources Status
+
+| Source | Status | Coverage |
+|--------|--------|----------|
+| **OMI** | ✅ Complete | 7,904 municipalities, 2004-2024 |
+| **ISTAT Population** | ✅ Complete | All municipalities, 2002-2025 |
+| **IRPEF Income** | ✅ Complete | All municipalities, 2012-2023 |
+| **InsideAirbnb** | ⚠️ Partial | 4 cities only |
+| **Tourism** | ⚠️ Province-level | Not municipality-level |
+| **Crime** | ❌ Not integrated | Available from ISTAT |
+| **Environment** | ❌ Not integrated | Available from ISPRA |
+| **Accessibility** | ❌ Not integrated | Available from MIT |
+
+---
+
+## Key References
+
+1. Rosen (1974) - Hedonic Prices and Implicit Markets
+2. Anselin (1988) - Spatial Econometrics
+3. [MDPI 2024](https://www.mdpi.com/2813-2203/3/1/3) - XGBoost for house prices
+4. [MDPI 2025](https://www.mdpi.com/2813-8090/2/4/16) - MLP for Italian housing
+5. [Tandfonline](https://www.tandfonline.com/doi/abs/10.1080/13658810802672469) - GTWR methodology
+
+---
+
+## Changelog
+
+- **2026-01-05**: Updated to reflect actual model performance (R²=83.2%)
+- **2026-01-03**: Initial POC documented (R²=0.3%, superseded)

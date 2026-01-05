@@ -21,6 +21,8 @@ dependencies = [
     "geopandas>=0.14.0",
     "shapely>=2.0.0",
     "libpysal>=4.9.0",
+    "esda>=2.5.0",
+    "spreg>=1.4.0",
     "folium>=0.15.0",
 
     # Visualization
