@@ -67,6 +67,9 @@
   };
 
   enterShell = ''
+    # Add uv venv site-packages to PYTHONPATH
+    export PYTHONPATH="$PWD/.devenv/state/venv/lib/python3.12/site-packages:$PYTHONPATH"
+
     echo ""
     echo "=============================================="
     echo "  Italian Real Estate Demographic Risk Model"

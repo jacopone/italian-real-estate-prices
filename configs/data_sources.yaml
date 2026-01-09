@@ -45,3 +45,190 @@ mef:
   url: "https://www.finanze.gov.it/it/statistiche-fiscali/DichiarazioniFiscali-/"
   dataset: "Redditi e principali variabili IRPEF su base comunale"
   license: "CC 3.0"
+
+# === VACANCY & HOUSING DATA ===
+
+istat_housing:
+  description: "ISTAT Census 2021 - Housing occupancy data"
+  portals:
+    census_permanent: "http://dati-censimentipermanenti.istat.it/Index.aspx?DataSetCode=DCSS_ABITAZIONI"
+    census_population: "http://dati-censimentopopolazione.istat.it/Index.aspx?DataSetCode=DICA_ALLOGGI"
+    census_municipal: "http://dati-censimentopopolazione.istat.it/Index.aspx?DataSetCode=DICA_ABIT_PR_COM"
+  license: "CC-BY 3.0"
+  update_frequency: "census (2021)"
+  datasets:
+    - name: "DCSS_ABITAZIONI"
+      description: "Dwellings by construction period and occupancy status - regions/provinces"
+    - name: "DICA_ALLOGGI"
+      description: "Dwellings not occupied by residents per residential building"
+    - name: "DICA_ABIT_PR_COM"
+      description: "Occupied dwellings - municipal data"
+  key_metrics:
+    - total_abitazioni: "Total dwellings"
+    - abitazioni_occupate: "Occupied dwellings (72.8% nationally)"
+    - abitazioni_non_occupate: "Unoccupied dwellings (27.2% = 9.58M nationally)"
+  notes: |
+    Non-occupied includes: second homes, vacation rentals, Airbnb, truly vacant.
+    Does NOT distinguish between types of vacancy (limitation of 2021 census).
+
+istat_demographics:
+  description: "ISTAT demographic dynamics - population change indicator"
+  portal: "https://demo.istat.it/"
+  license: "CC-BY 3.0"
+  update_frequency: "monthly"
+  datasets:
+    - name: "POS"
+      description: "Resident population by municipality"
+      url: "https://demo.istat.it/app/?i=POS"
+    - name: "D7B"
+      description: "Monthly demographic balance (births, deaths, migration)"
+      url: "https://demo.istat.it/app/?i=D7B"
+    - name: "PPC"
+      description: "Municipal population forecasts"
+      url: "https://demo.istat.it/app/?i=PPC"
+  key_metrics:
+    - population_current: "Current resident population"
+    - population_change: "Year-over-year change"
+    - natural_balance: "Births - Deaths"
+    - migration_balance: "Immigration - Emigration"
+  notes: |
+    Critical for identifying depopulating areas vs stable/growing areas.
+    Negative population change + high vacancy = abandonment signal.
+
+# === TOURISM DATA ===
+
+istat_tourism:
+  description: "ISTAT tourism statistics - arrivals and nights spent"
+  portal: "http://dati.istat.it/"
+  section: "Servizi/Turismo"
+  license: "CC-BY 3.0"
+  update_frequency: "quarterly"
+  datasets:
+    - name: "DCSC_MOVIMENTO"
+      description: "Tourist flows - arrivals and presences"
+      url: "http://dati.istat.it/Index.aspx?DataSetCode=DCSC_MOVIMENTO"
+    - name: "DCSC_ESERCIZI"
+      description: "Accommodation establishments"
+      url: "http://dati.istat.it/Index.aspx?DataSetCode=DCSC_ESERCIZI"
+  key_metrics:
+    - arrivi: "Tourist arrivals"
+    - presenze: "Nights spent (presenze turistiche)"
+    - tourism_intensity: "presenze / population ratio"
+  notes: |
+    High tourism intensity + high vacancy = tourist-driven vacancy (second homes, Airbnb).
+    Regional data available; some regions provide municipal-level data.
+
+regional_tourism:
+  description: "Regional tourism portals with municipal-level data"
+  license: "Various (mostly CC-BY)"
+  update_frequency: "monthly/quarterly"
+  sources:
+    sardegna:
+      url: "https://osservatorio.sardegnaturismo.it/it/open-data"
+      format: "CSV"
+      granularity: "municipal"
+      description: "Monthly arrivals and presences by municipality"
+    toscana:
+      url: "https://www.regione.toscana.it/statistiche/banca-dati-turismo"
+      format: "CSV/XLS"
+      granularity: "provincial/ambiti"
+      description: "Arrivals and presences by province and tourist areas"
+    veneto:
+      url: "https://osservatorioturismoveneto.it/dati-e-indicatori/scarica-i-dati-ufficiali-sul-movimento-turistico/"
+      format: "XLS"
+      granularity: "provincial/STL"
+      description: "Tourist movement by province and local tourism systems"
+
+# === SHORT-TERM RENTAL DATA ===
+
+inside_airbnb:
+  description: "Inside Airbnb - Short-term rental listings data"
+  url: "https://insideairbnb.com/get-the-data/"
+  license: "Creative Commons CC0 1.0"
+  update_frequency: "quarterly"
+  italian_cities:
+    - rome
+    - milan
+    - florence
+    - venice
+    - naples
+  italian_regions:
+    - puglia
+    - sicily
+    - trentino
+    - lombardy
+    - lazio
+    - toscana
+    - veneto
+    - campania
+  files:
+    listings: "listings.csv.gz"
+    calendar: "calendar.csv.gz"
+    reviews: "reviews.csv.gz"
+    neighbourhoods: "neighbourhoods.csv"
+  key_metrics:
+    - listing_count: "Number of Airbnb listings"
+    - listing_density: "Listings per 1000 inhabitants"
+    - entire_home_ratio: "% of entire home vs shared room"
+    - availability_365: "Days available per year"
+    - estimated_revenue: "Estimated annual revenue"
+  notes: |
+    Critical for identifying tourist-driven vacancy.
+    High Airbnb density + high vacancy = short-term rental market.
+    Florence historic center: 139 listings per 1000 inhabitants.
+
+kaggle_airbnb:
+  description: "Kaggle Italian Airbnb datasets (alternative/backup)"
+  datasets:
+    - name: "Italian Airbnb Dataset"
+      url: "https://www.kaggle.com/datasets/salvatoremarcello/italian-airbnb-dataset"
+      description: "Concatenated Italian city data 2023-2024"
+    - name: "Airbnb in Italy"
+      url: "https://www.kaggle.com/datasets/alessiocrisafulli/airbnb-italy"
+      description: "Milan, Rome, Florence, Venice, Naples, Sicily, Puglia, Trentino"
+  license: "CC0/Various"
+  notes: "Useful as backup or for historical analysis"
+
+# === REAL ESTATE TRANSACTIONS ===
+
+agenzia_entrate_ntn:
+  description: "Agenzia delle Entrate - Transaction volumes (NTN)"
+  url: "https://www.agenziaentrate.gov.it/portale/schede/fabbricatiterreni/omi/banche-dati/volumi-di-compravendita"
+  download_service: "https://www.agenziaentrate.gov.it/portale/schede/fabbricatiterreni/omi/forniture-dati-omi"
+  license: "CC-BY (cite: Agenzia Entrate - OMI)"
+  update_frequency: "annual (with quarterly updates)"
+  authentication: "Required (SPID/CIE/CNS for municipal-level data)"
+  datasets:
+    - name: "NTN_comunale"
+      description: "Normalized Transaction Number by municipality and sector"
+      granularity: "municipal"
+      years_available: "2011-2024"
+    - name: "NTN_provinciale"
+      description: "Normalized Transaction Number by province (quarterly)"
+      granularity: "provincial"
+  key_metrics:
+    - ntn_residenziale: "Residential transactions"
+    - ntn_change_yoy: "Year-over-year change in transactions"
+  notes: |
+    Low NTN + high vacancy = stagnant/declining market.
+    Requires authentication for municipal-level CSV download.
+
+# === FEATURE ENGINEERING CONFIG ===
+
+vacancy_classifier:
+  description: "Configuration for vacancy type classification feature"
+  inputs:
+    - istat_housing.abitazioni_non_occupate
+    - istat_demographics.population_change
+    - istat_tourism.tourism_intensity
+    - inside_airbnb.listing_density
+    - omi.price_trend
+  output_classes:
+    tourist_vacancy: "High tourism + stable/growing population"
+    decline_vacancy: "Low tourism + declining population"
+    mixed_vacancy: "Both effects present"
+  thresholds:
+    high_vacancy: 0.30  # > 30% non-occupied
+    high_tourism: 10.0  # > 10 presenze per inhabitant
+    population_decline: -0.05  # > 5% decline over 10 years
+    high_airbnb: 20.0  # > 20 listings per 1000 inhabitants

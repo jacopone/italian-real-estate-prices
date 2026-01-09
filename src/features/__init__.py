@@ -21,6 +21,18 @@ from src.features.pipeline import (
     create_features,
 )
 from src.features.tourism import STRFeatures, STRProxyFeatures, TourismFeatures
+from src.features.vacancy_classifier import (
+    VacancyClassifier,
+    VacancyThresholds,
+    VacancyType,
+    create_vacancy_features,
+    get_vacancy_risk_score,
+)
+from src.features.vacancy_features import (
+    create_vacancy_model_features,
+    get_vacancy_feature_importance,
+    prepare_model_features,
+)
 
 __all__ = [
     # Base
@@ -48,4 +60,14 @@ __all__ = [
     "FeaturePipelineResult",
     "ModelReadyPipeline",
     "create_features",
+    # Vacancy
+    "VacancyClassifier",
+    "VacancyThresholds",
+    "VacancyType",
+    "create_vacancy_features",
+    "get_vacancy_risk_score",
+    # Vacancy Model Features
+    "create_vacancy_model_features",
+    "prepare_model_features",
+    "get_vacancy_feature_importance",
 ]

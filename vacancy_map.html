@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Italian Real Estate Vacancy Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: #0f0f0f;
+            color: #fff;
+        }
+
+        #map {
+            height: 100vh;
+            width: 100%;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(15, 15, 15, 0.95);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 380px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        }
+
+        .info-panel h1 {
+            font-size: 1.4rem;
+            font-weight: 600;
+            margin-bottom: 6px;
+            background: linear-gradient(135deg, #fff 0%, #a0a0a0 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .info-panel .subtitle {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 16px;
+        }
+
+        .view-toggle {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .view-btn {
+            flex: 1;
+            padding: 10px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            color: #888;
+            cursor: pointer;
+            font-size: 0.8rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .view-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+            color: #fff;
+        }
+
+        .view-btn.active {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+            color: #fff;
+        }
+
+        .legend {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 12px;
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .legend-item:hover {
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .legend-item.active {
+            border-color: rgba(255, 255, 255, 0.3);
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .legend-color {
+            width: 14px;
+            height: 14px;
+            border-radius: 4px;
+            flex-shrink: 0;
+        }
+
+        .legend-info {
+            flex: 1;
+        }
+
+        .legend-label {
+            font-size: 0.85rem;
+            font-weight: 500;
+            color: #fff;
+        }
+
+        .legend-stats {
+            font-size: 0.7rem;
+            color: #666;
+            margin-top: 1px;
+        }
+
+        .legend-count {
+            font-size: 0.75rem;
+            color: #555;
+            font-weight: 500;
+        }
+
+        .hover-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: rgba(15, 15, 15, 0.95);
+            border-radius: 12px;
+            padding: 16px 20px;
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 300px;
+            display: none;
+        }
+
+        .hover-info.visible {
+            display: block;
+        }
+
+        .hover-info h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .hover-info .region {
+            font-size: 0.8rem;
+            color: #888;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .hover-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+        }
+
+        .hover-stat {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .hover-stat-value {
+            font-size: 1.15rem;
+            font-weight: 600;
+        }
+
+        .hover-stat-label {
+            font-size: 0.65rem;
+            color: #888;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-size: 0.65rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .control-btn {
+            background: rgba(15, 15, 15, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #fff;
+            padding: 10px 14px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            backdrop-filter: blur(20px);
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #0f0f0f;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-top-color: #fff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: #888;
+            font-size: 0.9rem;
+        }
+
+        /* Leaflet overrides */
+        .leaflet-container {
+            background: #1a1a1a;
+        }
+
+        .leaflet-control-zoom {
+            border: none !important;
+        }
+
+        .leaflet-control-zoom a {
+            background: rgba(15, 15, 15, 0.95) !important;
+            color: #fff !important;
+            border: 1px solid rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .leaflet-control-zoom a:hover {
+            background: rgba(255, 255, 255, 0.1) !important;
+        }
+
+        .stats-summary {
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stats-summary h4 {
+            font-size: 0.75rem;
+            color: #666;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 10px;
+        }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.8rem;
+            padding: 4px 0;
+        }
+
+        .stats-label {
+            color: #888;
+        }
+
+        .stats-value {
+            color: #fff;
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="spinner"></div>
+        <div class="loading-text">Loading Italian municipalities...</div>
+    </div>
+
+    <div id="map"></div>
+
+    <div class="info-panel">
+        <h1>Vacancy Classification</h1>
+        <p class="subtitle">Italian Real Estate Market - ISTAT Census 2021</p>
+
+        <div class="view-toggle">
+            <button class="view-btn active" id="btnRegions" onclick="switchView('regions')">Regions</button>
+            <button class="view-btn" id="btnMunicipalities" onclick="switchView('municipalities')">Municipalities</button>
+            <button class="view-btn" id="btnValidation" onclick="switchView('validation')">Validation</button>
+        </div>
+
+        <div class="legend" id="legend">
+            <div class="legend-item active" data-type="all">
+                <div class="legend-color" style="background: linear-gradient(135deg, #4ade80, #f59e0b, #ef4444, #8b5cf6);"></div>
+                <div class="legend-info">
+                    <div class="legend-label">All Types</div>
+                </div>
+                <div class="legend-count">7,850</div>
+            </div>
+            <div class="legend-item" data-type="low_vacancy">
+                <div class="legend-color" style="background: #4ade80;"></div>
+                <div class="legend-info">
+                    <div class="legend-label">Low Vacancy</div>
+                    <div class="legend-stats">Normal market</div>
+                </div>
+                <div class="legend-count">5,595</div>
+            </div>
+            <div class="legend-item" data-type="decline_vacancy">
+                <div class="legend-color" style="background: #ef4444;"></div>
+                <div class="legend-info">
+                    <div class="legend-label">Decline Vacancy</div>
+                    <div class="legend-stats">Depopulating</div>
+                </div>
+                <div class="legend-count">1,195</div>
+            </div>
+            <div class="legend-item" data-type="tourist_vacancy">
+                <div class="legend-color" style="background: #f59e0b;"></div>
+                <div class="legend-info">
+                    <div class="legend-label">Tourist Vacancy</div>
+                    <div class="legend-stats">High tourism</div>
+                </div>
+                <div class="legend-count">931</div>
+            </div>
+            <div class="legend-item" data-type="mixed_vacancy">
+                <div class="legend-color" style="background: #8b5cf6;"></div>
+                <div class="legend-info">
+                    <div class="legend-label">Mixed Vacancy</div>
+                    <div class="legend-stats">Complex market</div>
+                </div>
+                <div class="legend-count">129</div>
+            </div>
+        </div>
+
+        <div class="stats-summary" id="vacancyStats">
+            <h4>Price by Type</h4>
+            <div class="stats-row">
+                <span class="stats-label">Decline areas</span>
+                <span class="stats-value" style="color: #ef4444;">€859/m²</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Normal market</span>
+                <span class="stats-value" style="color: #4ade80;">€987/m²</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Tourist areas</span>
+                <span class="stats-value" style="color: #f59e0b;">€1,306/m²</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Mixed markets</span>
+                <span class="stats-value" style="color: #8b5cf6;">€1,651/m²</span>
+            </div>
+        </div>
+
+        <div class="stats-summary" id="validationStats" style="display: none;">
+            <h4>Model Validation</h4>
+            <div class="stats-row">
+                <span class="stats-label">Idealista vs OMI</span>
+                <span class="stats-value" style="color: #4ade80;">r = 0.883</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Idealista vs Model</span>
+                <span class="stats-value" style="color: #60a5fa;">r = 0.756</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Avg Listing Premium</span>
+                <span class="stats-value">+15.5%</span>
+            </div>
+            <div class="stats-row">
+                <span class="stats-label">Data Source</span>
+                <span class="stats-value" style="color: #888;">Idealista Q4 2025</span>
+            </div>
+        </div>
+
+        <div class="legend" id="validationLegend" style="display: none;">
+            <div class="legend-item" data-type="confirmed">
+                <div class="legend-color" style="background: #4ade80;"></div>
+                <div class="legend-info">
+                    <div class="legend-label">Confirmed</div>
+                    <div class="legend-stats">Listing ≈ OMI price</div>
+                </div>
+            </div>
+            <div class="legend-item" data-type="listings_higher">
+                <div class="legend-color" style="background: #f59e0b;"></div>
+                <div class="legend-info">
+                    <div class="legend-label">Listings Higher</div>
+                    <div class="legend-stats">Premium market</div>
+                </div>
+            </div>
+            <div class="legend-item" data-type="listings_lower">
+                <div class="legend-color" style="background: #ef4444;"></div>
+                <div class="legend-info">
+                    <div class="legend-label">Listings Lower</div>
+                    <div class="legend-stats">Declining market</div>
+                </div>
+            </div>
+            <div class="legend-item" data-type="no_data">
+                <div class="legend-color" style="background: #6b7280;"></div>
+                <div class="legend-info">
+                    <div class="legend-label">No Data</div>
+                    <div class="legend-stats">Missing OMI match</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="hover-info" id="hoverInfo">
+        <h3 id="hoverName">Municipality Name</h3>
+        <div class="region" id="hoverRegion">
+            <span id="hoverRegionName">Region</span>
+            <span class="type-badge" id="hoverBadge">Type</span>
+        </div>
+        <div class="hover-stats">
+            <div class="hover-stat">
+                <div class="hover-stat-value" id="hoverPrice">-</div>
+                <div class="hover-stat-label">Price €/m²</div>
+            </div>
+            <div class="hover-stat">
+                <div class="hover-stat-value" id="hoverVacancy">-</div>
+                <div class="hover-stat-label">Vacancy Rate</div>
+            </div>
+            <div class="hover-stat">
+                <div class="hover-stat-value" id="hoverPopChange">-</div>
+                <div class="hover-stat-label">Pop. Change 10yr</div>
+            </div>
+            <div class="hover-stat">
+                <div class="hover-stat-value" id="hoverTourism">-</div>
+                <div class="hover-stat-label">Tourism Index</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button class="control-btn" onclick="map.setView([42.5, 12.5], 6)">Reset View</button>
+        <button class="control-btn" onclick="map.setView([41.9, 12.5], 9)">Rome</button>
+        <button class="control-btn" onclick="map.setView([45.4, 9.2], 9)">Milan</button>
+        <button class="control-btn" onclick="map.setView([44.3, 8.5], 9)">Liguria</button>
+        <button class="control-btn" onclick="map.setView([45.4, 12.3], 10)">Venice</button>
+    </div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        const colors = {
+            'low_vacancy': '#4ade80',
+            'decline_vacancy': '#ef4444',
+            'tourist_vacancy': '#f59e0b',
+            'mixed_vacancy': '#8b5cf6',
+            'unknown': '#374151'
+        };
+
+        const validationColors = {
+            'confirmed': '#4ade80',
+            'listings_higher': '#f59e0b',
+            'listings_lower': '#ef4444',
+            'no_data': '#6b7280'
+        };
+
+        const map = L.map('map', {
+            zoomControl: true,
+            preferCanvas: true
+        }).setView([42.5, 12.5], 6);
+
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+            attribution: '&copy; OpenStreetMap &copy; CARTO',
+            subdomains: 'abcd',
+            maxZoom: 19
+        }).addTo(map);
+
+        let currentLayer = null;
+        let validationLayer = null;
+        let currentFilter = 'all';
+        let currentView = 'regions';
+        let regionsData = null;
+        let municipalitiesData = null;
+        let validationData = null;
+
+        function getStyle(feature) {
+            const type = feature.properties.vacancy_type || 'unknown';
+            const isFiltered = currentFilter !== 'all' && type !== currentFilter;
+
+            return {
+                fillColor: colors[type] || colors.unknown,
+                weight: currentView === 'regions' ? 2 : 0.5,
+                opacity: isFiltered ? 0.2 : 0.9,
+                color: currentView === 'regions' ? 'rgba(255,255,255,0.3)' : '#000',
+                fillOpacity: isFiltered ? 0.1 : 0.75
+            };
+        }
+
+        function highlightStyle(feature) {
+            return {
+                weight: 3,
+                color: '#fff',
+                fillOpacity: 0.9
+            };
+        }
+
+        function updateHoverInfo(props, isRegion) {
+            const hoverInfo = document.getElementById('hoverInfo');
+            const name = props.name || props.COMUNE || 'Unknown';
+            const region = isRegion ? '' : (props.reg_name || props.prov_name || '-');
+            const type = props.vacancy_type || 'unknown';
+
+            document.getElementById('hoverName').textContent = name;
+            document.getElementById('hoverRegionName').textContent = isRegion ?
+                `${props.municipality_count || '-'} municipalities` : region;
+
+            const badge = document.getElementById('hoverBadge');
+            badge.textContent = type.replace('_', ' ');
+            badge.style.background = colors[type] || colors.unknown;
+
+            document.getElementById('hoverPrice').textContent = props.price_avg ?
+                `€${Math.round(props.price_avg).toLocaleString()}` : '-';
+            document.getElementById('hoverVacancy').textContent = props.vacancy_rate ?
+                `${props.vacancy_rate}%` : '-';
+
+            const popChange = props.pop_change;
+            const popEl = document.getElementById('hoverPopChange');
+            popEl.textContent = popChange != null ?
+                `${popChange > 0 ? '+' : ''}${popChange}%` : '-';
+            popEl.style.color = popChange < -10 ? '#ef4444' :
+                               popChange > 5 ? '#4ade80' : '#fff';
+
+            document.getElementById('hoverTourism').textContent = props.tourism ?
+                props.tourism.toFixed(1) : '-';
+
+            hoverInfo.classList.add('visible');
+        }
+
+        function onEachFeature(feature, layer) {
+            const isRegion = currentView === 'regions';
+            layer.on({
+                mouseover: function(e) {
+                    e.target.setStyle(highlightStyle(feature));
+                    e.target.bringToFront();
+                    updateHoverInfo(feature.properties, isRegion);
+                },
+                mouseout: function(e) {
+                    currentLayer.resetStyle(e.target);
+                    document.getElementById('hoverInfo').classList.remove('visible');
+                },
+                click: function(e) {
+                    if (isRegion) {
+                        map.fitBounds(e.target.getBounds(), { padding: [50, 50] });
+                    } else {
+                        map.fitBounds(e.target.getBounds());
+                    }
+                }
+            });
+        }
+
+        function filterByType(type) {
+            currentFilter = type;
+            document.querySelectorAll('.legend-item').forEach(item => {
+                item.classList.toggle('active', item.dataset.type === type);
+            });
+            if (currentLayer) {
+                currentLayer.setStyle(getStyle);
+            }
+        }
+
+        function switchView(view) {
+            currentView = view;
+            document.getElementById('btnRegions').classList.toggle('active', view === 'regions');
+            document.getElementById('btnMunicipalities').classList.toggle('active', view === 'municipalities');
+            document.getElementById('btnValidation').classList.toggle('active', view === 'validation');
+
+            // Toggle legend visibility
+            const isValidation = view === 'validation';
+            document.getElementById('legend').style.display = isValidation ? 'none' : 'flex';
+            document.getElementById('validationLegend').style.display = isValidation ? 'flex' : 'none';
+            document.getElementById('vacancyStats').style.display = isValidation ? 'none' : 'block';
+            document.getElementById('validationStats').style.display = isValidation ? 'block' : 'none';
+
+            // Remove existing layers
+            if (currentLayer) {
+                map.removeLayer(currentLayer);
+                currentLayer = null;
+            }
+            if (validationLayer) {
+                map.removeLayer(validationLayer);
+                validationLayer = null;
+            }
+
+            if (view === 'validation') {
+                // Show validation markers
+                if (validationData) {
+                    validationLayer = L.geoJSON(validationData, {
+                        pointToLayer: function(feature, latlng) {
+                            const status = feature.properties.validation_status || 'no_data';
+                            const color = validationColors[status] || validationColors.no_data;
+                            return L.circleMarker(latlng, {
+                                radius: 12,
+                                fillColor: color,
+                                color: '#fff',
+                                weight: 2,
+                                opacity: 1,
+                                fillOpacity: 0.9
+                            });
+                        },
+                        onEachFeature: onEachValidationFeature
+                    }).addTo(map);
+                }
+            } else {
+                // Show vacancy layers
+                const data = view === 'regions' ? regionsData : municipalitiesData;
+                if (data) {
+                    currentLayer = L.geoJSON(data, {
+                        style: getStyle,
+                        onEachFeature: onEachFeature
+                    }).addTo(map);
+                }
+            }
+
+            document.querySelector('.loading-text').textContent =
+                view === 'validation' ? 'Loading validation data...' :
+                view === 'municipalities' ? 'Loading municipalities...' : 'Loading regions...';
+        }
+
+        function onEachValidationFeature(feature, layer) {
+            layer.on({
+                mouseover: function(e) {
+                    e.target.setStyle({
+                        radius: 16,
+                        weight: 3
+                    });
+                    updateValidationHoverInfo(feature.properties);
+                },
+                mouseout: function(e) {
+                    e.target.setStyle({
+                        radius: 12,
+                        weight: 2
+                    });
+                    document.getElementById('hoverInfo').classList.remove('visible');
+                },
+                click: function(e) {
+                    map.setView(e.latlng, 10);
+                }
+            });
+        }
+
+        function updateValidationHoverInfo(props) {
+            const hoverInfo = document.getElementById('hoverInfo');
+            const status = props.validation_status || 'no_data';
+
+            document.getElementById('hoverName').textContent = props.city || 'Unknown';
+            document.getElementById('hoverRegionName').textContent = props.region || '-';
+
+            const badge = document.getElementById('hoverBadge');
+            badge.textContent = status.replace(/_/g, ' ');
+            badge.style.background = validationColors[status] || validationColors.no_data;
+
+            // Update stats with validation data
+            document.getElementById('hoverPrice').textContent = props.immobiliare_price_sqm ?
+                `€${Math.round(props.immobiliare_price_sqm).toLocaleString()}` : '-';
+            document.getElementById('hoverPrice').parentElement.querySelector('.hover-stat-label').textContent = 'Idealista €/m²';
+
+            document.getElementById('hoverVacancy').textContent = props.omi_price_sqm ?
+                `€${Math.round(props.omi_price_sqm).toLocaleString()}` : '-';
+            document.getElementById('hoverVacancy').parentElement.querySelector('.hover-stat-label').textContent = 'OMI €/m²';
+
+            const premium = props.price_premium_pct;
+            const popEl = document.getElementById('hoverPopChange');
+            popEl.textContent = premium != null ? `${premium > 0 ? '+' : ''}${premium.toFixed(1)}%` : '-';
+            popEl.style.color = premium > 20 ? '#f59e0b' : premium < -10 ? '#ef4444' : '#4ade80';
+            popEl.parentElement.querySelector('.hover-stat-label').textContent = 'Premium vs OMI';
+
+            document.getElementById('hoverTourism').textContent = props.predicted_price ?
+                `€${Math.round(props.predicted_price).toLocaleString()}` : '-';
+            document.getElementById('hoverTourism').parentElement.querySelector('.hover-stat-label').textContent = 'Model Predicted';
+
+            hoverInfo.classList.add('visible');
+        }
+
+        document.querySelectorAll('.legend-item').forEach(item => {
+            item.addEventListener('click', () => filterByType(item.dataset.type));
+        });
+
+        // Load all datasets
+        Promise.all([
+            fetch('data/processed/vacancy_regional.geojson').then(r => r.json()),
+            fetch('data/processed/vacancy_map.geojson').then(r => r.json()),
+            fetch('outputs/validation/validation_cities.geojson').then(r => r.json()).catch(() => null)
+        ]).then(([regions, municipalities, validation]) => {
+            regionsData = regions;
+            municipalitiesData = municipalities;
+            validationData = validation;
+
+            currentLayer = L.geoJSON(regions, {
+                style: getStyle,
+                onEachFeature: onEachFeature
+            }).addTo(map);
+
+            // Update validation stats if available
+            if (validation && validation.metadata && validation.metadata.validation_summary) {
+                const summary = validation.metadata.validation_summary;
+                if (summary.omi_pearson_r) {
+                    document.querySelector('#validationStats .stats-row:nth-child(2) .stats-value').textContent =
+                        `r = ${summary.omi_pearson_r.toFixed(3)}`;
+                }
+                if (summary.model_pearson_r) {
+                    document.querySelector('#validationStats .stats-row:nth-child(3) .stats-value').textContent =
+                        `r = ${summary.model_pearson_r.toFixed(3)}`;
+                }
+            }
+
+            document.getElementById('loading').classList.add('hidden');
+        }).catch(error => {
+            console.error('Error:', error);
+            document.querySelector('.loading-text').textContent = 'Error loading data';
+        });
+    </script>
+</body>
+</html>

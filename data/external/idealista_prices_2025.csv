@@ -1,0 +1,11 @@
+city,city_name,istat_code,omi_code,region,province,price_sqm,source,fetch_date
+roma,Roma,058091,1058091,LAZIO,RM,3306,idealista,2025-12-29
+milano,Milano,015146,1015146,LOMBARDIA,MI,5184,idealista,2025-12-29
+firenze,Firenze,048017,1048017,TOSCANA,FI,4531,idealista,2025-12-29
+napoli,Napoli,063049,1063049,CAMPANIA,NA,2735,idealista,2025-12-29
+bologna,Bologna,037006,1037006,EMILIA-ROMAGNA,BO,3648,idealista,2025-12-29
+torino,Torino,001272,1001272,PIEMONTE,TO,1924,idealista,2025-12-29
+venezia,Venezia,027042,1027042,VENETO,VE,4877,idealista,2025-12-29
+palermo,Palermo,082053,1082053,SICILIA,PA,1136,idealista,2025-12-29
+genova,Genova,010025,1010025,LIGURIA,GE,1452,idealista,2025-12-29
+bari,Bari,072006,1072006,PUGLIA,BA,1654,idealista,2025-12-29

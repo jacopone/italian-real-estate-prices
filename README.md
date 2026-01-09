@@ -6,96 +6,134 @@ A machine learning system for analyzing Italian real estate prices, identifying 
 
 | Model | Target | R² Score | Validation | Notes |
 |-------|--------|----------|------------|-------|
+| Price (GB + Vacancy) | EUR/sqm | **48.2%** | Random split | Vacancy-aware model |
 | Price (GB + STR, Optuna) | EUR/sqm | **84.8%** | Spatial CV | Holdout municipalities |
 | Price (GB + STR) | EUR/sqm | **92.2%** | Temporal | Train 2014-21, test 22-23 |
 | Price (GB + lag) | EUR/sqm | **99.4%** | Spatial CV | For forecasting |
 | Rent (GB + STR) | EUR/sqm/month | **74.3%** | Random split | |
 
+### Model Validation (Idealista Q4 2025)
+
+| Comparison | Pearson r | p-value | Interpretation |
+|------------|-----------|---------|----------------|
+| Idealista vs OMI | **0.883** | 0.0016 | Very strong positive |
+| Idealista vs Model | **0.756** | 0.0185 | Strong positive |
+
+- Average listing premium: **+15.5%** above OMI (expected for asking vs transaction prices)
+- Undervalued confirmation rate: **100%** (model's undervalued picks confirmed by market)
+
 **Key Findings**:
 1. STR density is the #1 predictor (65% feature importance) for price levels
-2. Optuna hyperparameter tuning improved R² by +3.5% over baseline
-3. Prices are highly persistent (99.4% R² with lagged price)
+2. Vacancy classification identifies 4 distinct market types across 7,850 municipalities
+3. Model predictions correlate strongly (r=0.756) with actual Idealista listing prices
 4. Model captures 91% of spatial autocorrelation (Moran's I: 0.76 → 0.07)
 
 ## Features
 
 - **Hedonic Pricing Model**: Log-log specification capturing price elasticities
 - **Multi-source Data Integration**: OMI prices, ISTAT demographics, IRPEF income, InsideAirbnb
+- **Vacancy Classification**: 4-type classification (low/decline/tourist/mixed vacancy)
 - **Gradient Boosting Regression**: Optimized ensemble model with feature importance
 - **Undervaluation Detection**: Residual-based identification of mispriced municipalities
+- **Market Validation**: Correlation analysis with Idealista listing prices
+- **Interactive Map**: Leaflet visualization with vacancy and validation layers
 - **Smart Investment Picks**: Combined undervaluation + yield scoring
 
 ## Quick Start
 
 ```bash
-# Install dependencies
-uv sync
+# Install dependencies (using devenv or uv)
+devenv shell
+# or: uv sync
 
-# Run the full pipeline
-python scripts/run_pipeline.py train --config configs/default.yaml
+# Run the full pipeline with vacancy classification
+python -m src.pipeline
 
-# Find smart investment picks
-python scripts/run_pipeline.py smart-picks --top 50 --min-yield 4.0
+# Train vacancy-aware price model
+python src/train_with_vacancy.py
+
+# Find undervalued municipalities
+python src/find_undervalued.py
+
+# Validate model against Idealista listings
+python src/validate_with_immobiliare.py
+
+# View interactive map
+python -m http.server 8080
+# Open http://localhost:8080/vacancy_map.html
 ```
 
 ## Project Structure
 
 ```
-italian-real-estate-risk/
+italian-real-estate-prices/
 ├── configs/
-│   └── default.yaml          # Main configuration
+│   ├── default.yaml          # Main configuration
+│   └── data_sources.yaml     # Data source URLs and settings
 ├── src/
 │   ├── config.py             # Pydantic configuration
+│   ├── pipeline.py           # Main data pipeline
+│   ├── train_with_vacancy.py # Vacancy-aware model training
+│   ├── find_undervalued.py   # Undervalued municipality detection
+│   ├── validate_with_immobiliare.py  # Market validation script
 │   ├── data/
+│   │   ├── fetchers/         # Data fetchers
+│   │   │   ├── omi.py        # OMI price data
+│   │   │   ├── istat.py      # ISTAT demographics
+│   │   │   ├── inside_airbnb.py  # Airbnb data
+│   │   │   └── immobiliare_it.py # Immobiliare.it/Idealista
 │   │   ├── schemas.py        # Pandera validation schemas
-│   │   ├── loaders.py        # Data loading utilities
-│   │   └── processors/       # Source-specific processors
-│   │       ├── omi.py        # OMI price data
-│   │       ├── istat.py      # Demographics
-│   │       ├── irpef.py      # Income
-│   │       ├── tourism.py    # Tourism statistics
-│   │       └── airbnb.py     # Short-term rentals
+│   │   └── loaders.py        # Data loading utilities
 │   ├── features/
-│   │   ├── base.py           # Transformer base classes
+│   │   ├── vacancy_classifier.py  # 4-type vacancy classification
+│   │   ├── vacancy_features.py    # Vacancy feature engineering
 │   │   ├── demographic.py    # Population features
 │   │   ├── economic.py       # Income features
-│   │   ├── geographic.py     # Distance features
-│   │   ├── tourism.py        # STR features
-│   │   └── pipeline.py       # Feature orchestration
+│   │   └── tourism.py        # STR features
+│   ├── validation/           # Model validation
+│   │   └── immobiliare_validator.py  # Listing price correlation
 │   ├── models/
-│   │   ├── base.py           # Model interface
 │   │   ├── regression.py     # OLS, Ridge, Lasso
-│   │   ├── ensemble.py       # Gradient Boosting
-│   │   └── training.py       # Training orchestration
-│   ├── evaluation/
-│   │   ├── metrics.py        # R², RMSE, diagnostics
-│   │   └── valuation.py      # Undervaluation detection
+│   │   └── ensemble.py       # Gradient Boosting
 │   └── utils/
-│       ├── constants.py      # ISTAT codes, mappings
-│       └── logging.py        # Loguru configuration
-├── scripts/
-│   └── run_pipeline.py       # CLI entry point
-├── tests/
-│   ├── conftest.py           # Pytest fixtures
-│   └── unit/                 # Unit tests
+│       └── constants.py      # ISTAT codes, mappings
 ├── data/
 │   ├── raw/                  # Source data files
-│   └── processed/            # Computed features
-├── outputs/                  # Maps, charts, dashboards
+│   ├── processed/            # Computed features, GeoJSON
+│   └── external/             # External validation data
+├── outputs/
+│   ├── validation/           # Validation results
+│   └── price_predictions.csv # Model predictions
+├── vacancy_map.html          # Interactive Leaflet map
 └── docs/
-    ├── METHODOLOGY.md        # Statistical methodology
-    └── data_dictionary.md    # Column definitions
+    └── METHODOLOGY.md        # Statistical methodology
 ```
 
 ## Data Sources
 
 | Source | Description | Coverage |
 |--------|-------------|----------|
-| **OMI** | Real estate quotations (Agenzia delle Entrate) | 7,670 municipalities, 2014-2023 |
-| **ISTAT** | Demographics, population trends | All municipalities, 2002-2025 |
+| **OMI** | Real estate quotations (Agenzia delle Entrate) | 7,850 municipalities, 2014-2023 |
+| **ISTAT** | Demographics, population, vacancy rates | All municipalities, Census 2021 |
 | **IRPEF** | Income tax declarations (MEF) | Municipality-level, 2012-2023 |
 | **InsideAirbnb** | Short-term rental listings | Milan, Florence, Bologna, Naples |
-| **Tourism** | Tourist arrivals by province | Province-level |
+| **Idealista** | Listing prices for validation | 10 major cities, Q4 2025 |
+
+## Vacancy Classification
+
+The model classifies 7,850 Italian municipalities into 4 vacancy types based on ISTAT Census 2021 data:
+
+| Type | Count | Avg Price | Characteristics |
+|------|-------|-----------|-----------------|
+| **Low Vacancy** | 5,595 | €987/m² | Normal market, <15% vacancy |
+| **Tourist Vacancy** | 931 | €1,306/m² | High tourism, seasonal homes |
+| **Decline Vacancy** | 1,195 | €859/m² | Depopulating, >20% vacancy |
+| **Mixed Vacancy** | 129 | €1,651/m² | Complex markets (tourism + decline) |
+
+Classification criteria:
+- `vacancy_rate`: Total vacancy rate from ISTAT Census
+- `pop_change_10yr`: Population change over 10 years
+- `tourism_index`: Tourism intensity (arrivals per resident)
 
 ## Model Features
 
@@ -119,6 +157,30 @@ italian-real-estate-risk/
 - `tourism_intensity` - Arrivals per 1000 residents
 - `str_density` - Airbnb listings per 1000 residents
 - `str_premium` - Airbnb monthly revenue vs long-term rent
+
+### Vacancy Features
+- `vacancy_rate` - Total housing vacancy rate (%)
+- `vacancy_type` - Classification (low/decline/tourist/mixed)
+- `pop_change_10yr` - Population change over 10 years (%)
+
+## Interactive Map
+
+The project includes an interactive Leaflet map (`vacancy_map.html`) with three views:
+
+1. **Regions View**: Aggregated vacancy classification by region
+2. **Municipalities View**: Individual municipality polygons (7,850 total)
+3. **Validation View**: 10 major cities with price comparison markers
+
+**Validation markers show**:
+- Idealista listing price (€/m²)
+- OMI government valuation (€/m²)
+- Listing premium vs OMI (%)
+- Model predicted price (€/m²)
+
+**Color coding**:
+- 🟢 Green: Confirmed (listing ≈ OMI price)
+- 🟠 Orange: Listings higher (premium market)
+- 🔴 Red: Listings lower (declining market)
 
 ## Usage Examples
 
